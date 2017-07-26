@@ -109,15 +109,15 @@ class EE_Command extends WP_CLI_Command {
 	 */
 	public $site_data          = array(
 		'html' => array(
-			'site-type'  => 'html',
+			'site-type'  => 'HTML',
 		),
 		'mysql' => array(
-			'site-type'  => 'php',
+			'site-type'  => 'PHP',
 			'mysql'      => 'yes',
 			'php'        => '5.6',
 		),
 		'php' => array(
-			'site-type'  => 'php',
+			'site-type'  => 'PHP',
 			'php'        => '5.6',
 		),
 		'php7' => array(
@@ -203,11 +203,15 @@ class EE_Command extends WP_CLI_Command {
 			$this->site_name = $_[0];
 		}
 
-		foreach ( $assoc_args as $key => $value ) {
-			if ( 'php7' === $key ) {
-				$this->php_version_update = true;
-			}
+		if ( array_key_exists( 'php7', $assoc_args ) ) {
+			$this->php_version_update = true;
+		}
 
+		if ( 1 === count( $assoc_args ) && array_key_exists( 'php7', $assoc_args ) ) {
+			$this->site_data['php7']['site-type'] = 'PHP';
+		}
+
+		foreach ( $assoc_args as $key => $value ) {
 			if ( ! array_key_exists( $key, $this->site_data ) ) {
 				WP_CLI::error( 'Incorrect argument: ' . $key );
 				return;
