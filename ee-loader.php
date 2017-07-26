@@ -1,19 +1,112 @@
 <?php
 
 class EE_Command extends WP_CLI_Command {
-	public $site_name          = '';
+
+	/**
+	 * Set to true if website is created/updated
+	 * with php7. Used to override version 5.6.
+	 *
+	 * @var boolean
+	 */
 	public $php_version_update = false;
 
-	public $site_type          = '';
-	public $cache_type         = '';
-	public $php_version        = '';
-	public $letsencrypt        = '';
-	public $mysql              = '';
-	public $php                = '';
+	/**
+	 * Name of the site.
+	 *
+	 * @var string
+	 */
+	public $site_name          = '';
 
+	/**
+	 * Type of the site.
+	 *
+	 * Example
+	 * - HTML
+	 * - PHP
+	 * - WordPress
+	 *
+	 * @var string
+	 */
+	public $site_type          = '';
+
+	/**
+	 * Code of the type of site. Useful during update()
+	 * operation.
+	 *
+	 * @var string
+	 */
+	public $site_type_code     = '';
+
+	/**
+	 * Type of cache used.
+	 *
+	 * @var string
+	 */
+	public $cache_type         = '';
+
+	/**
+	 * Version of PHP used.
+	 *
+	 * @var string
+	 */
+	public $php               = '';
+
+	/**
+	 * Set to `enabled` while installing letsencrypt.
+	 *
+	 * @var string
+	 */
+	public $letsencrypt        = '';
+
+	/**
+	 * Set to `yes`.
+	 *
+	 * @var string
+	 */
+	public $mysql              = '';
+
+	/**
+	 * Server Name.
+	 *
+	 * @var string
+	 */
+	public $server_name        = 'localhost';
+
+	/**
+	 * SQL Username.
+	 *
+	 * @var string
+	 */
+	public $username           = 'root';
+
+	/**
+	 * SQL Password.
+	 *
+	 * @var string
+	 */
+	public $password           = 'AqRcKrLo';
+
+	/**
+	 * Databse connection object.
+	 *
+	 * @var object
+	 */
 	public $conn               = '';
 
+	/**
+	 * Array stores information which is used
+	 * to create configuration files.
+	 *
+	 * @var string
+	 */
 	public $printer_array      = array();
+
+	/**
+	 * This array is referred while during
+	 * create() and update() operations.
+	 *
+	 * @var array
+	 */
 	public $site_data          = array(
 		'html' => array(
 			'site-type'  => 'html',
@@ -53,6 +146,53 @@ class EE_Command extends WP_CLI_Command {
 	);
 
 	/**
+	 * This array is referred during update() operation.
+	 *
+	 * Example: wp ee site update example.com --wp
+	 * The index of the argument `wp` from the below array
+	 * will be used for update() operation.
+	 *
+	 * @var array
+	 */
+	public $site_update_argument = array(
+		'html',
+		'php',
+		'php7',
+		'mysql',
+		'wp',
+		'wpfc',
+		'wpredis',
+	);
+
+	/**
+	 * During update() operation, the `site_type_code` will be fetched and
+	 * the index returned from $site_update_argument array will be used
+	 * to compare it with the below null, true and false values.
+	 *
+	 * The columns of booelan values are in this order:
+	 * html, php, php7, mysql, wp, wpfc, wpredis
+	 *
+	 * @var array
+	 */
+	public $site_update_constraints = array(
+		'html'    => array( null, true, true, true, true, true, true ),
+		'php'     => array( false, null, true, true, true, true, true ),
+		'php7'    => array( false, false, null, true, true, true, true ),
+		'mysql'   => array( false, false, false, null, true, true, true ),
+		'wp'      => array( false, false, false, false, null, true, true ),
+		'wpfc'    => array( false, false, false, false, true, null, true ),
+		'wpredis' => array( false, false, false, true, true, true, null ),
+	);
+
+	/**
+	 * Creates a site and stores site data in database and also creates
+	 * config files.
+	 *
+	 * Example: wp ee site create example.com --wpfc --letsencrypt
+	 *
+	 * @param array $_          Positional argument.
+	 * @param array $assoc_args Associative argument.
+	 *
 	 * @when before_wp_load
 	 */
 	public function create( $_, $assoc_args ) {
@@ -76,6 +216,7 @@ class EE_Command extends WP_CLI_Command {
 					$this->printer_array[] = $context . '=' . $context_value;
 					switch ( $context ) {
 						case 'site-type':
+							$this->site_type_code = $key;
 							$this->site_type = $context_value;
 							break;
 
@@ -106,6 +247,7 @@ class EE_Command extends WP_CLI_Command {
 
 		$this->_insert_to_db(
 			$this->site_name,
+			$this->site_type_code,
 			$this->site_type,
 			$this->cache_type,
 			$this->php,
@@ -117,6 +259,13 @@ class EE_Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Shows information of a particular site in a tabular form.
+	 *
+	 * Example: wp ee site info example.com
+	 *
+	 * @param array $_          Positional argument.
+	 * @param array $assoc_args Associative argument.
+	 *
 	 * @when before_wp_load
 	 */
 	public function info( $_, $assoc_args ) {
@@ -125,12 +274,11 @@ class EE_Command extends WP_CLI_Command {
 			return;
 		}
 
-		if ( false === $this->_connect_to_db( 'localhost', 'root', 'AqRcKrLo' ) ) {
+		if ( false === $this->_connect_to_db() ) {
 			return;
 		}
 
 		$query = "SELECT * FROM ee.ee_site_data WHERE ee_site_data.site_name = '" . $_[0] . "'";
-
 
 		if ( $result = $this->conn->query( $query ) ) {
 			if ( 0 === $result->num_rows ) {
@@ -142,9 +290,9 @@ class EE_Command extends WP_CLI_Command {
 					'site_name',
 					'site_type',
 					'cache_type',
-					'php_version',
+					'php',
 					'letsencrypt',
-					'mysql'
+					'mysql',
 				);
 				WP_CLI\Utils\format_items( 'table', $items, $args );
 			}
@@ -154,6 +302,13 @@ class EE_Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Displays site configuration.
+	 *
+	 * Example: wp ee site show example.com
+	 *
+	 * @param array $_          Positional argument.
+	 * @param array $assoc_args Associative argument.
+	 *
 	 * @when before_wp_load
 	 */
 	public function show( $_, $assoc_args ) {
@@ -184,17 +339,29 @@ class EE_Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Displays a list of domain names of all sites.
+	 *
+	 * Example: wp ee site list
+	 *
+	 * @param array $_          Positional argument.
+	 * @param array $assoc_args Associative argument.
+	 *
 	 * @when before_wp_load
 	 */
 	public function list( $_, $assoc_args ) {
-		if ( false === $this->_connect_to_db( 'localhost', 'root', 'AqRcKrLo' ) ) {
+		if ( false === $this->_connect_to_db() ) {
 			return;
 		}
 
 		$query = "SELECT site_name FROM ee.ee_site_data";
+
 		if ( $result = $this->conn->query( $query ) ) {
+			if ( 0 === $result->num_rows ) {
+				WP_CLI::log( 'Database is empty' );
+				return;
+			}
 			while ( $row = $result->fetch_assoc() ) {
-				WP_CLI::line( WP_CLI::colorize( "%B" . $row['site_name'] . ":%n " ) );
+				WP_CLI::line( WP_CLI::colorize( "%B" . $row['site_name'] . "%n " ) );
 			}
 		}
 
@@ -202,6 +369,13 @@ class EE_Command extends WP_CLI_Command {
 	}
 
 	/**
+	 * Deletes a site from the database.
+	 *
+	 * Example: wp ee site delete example.com
+	 *
+	 * @param array $_          Positional argument.
+	 * @param array $assoc_args Associative argument.
+	 *
 	 * @when before_wp_load
 	 */
 	public function delete( $_, $assoc_args ) {
@@ -209,7 +383,7 @@ class EE_Command extends WP_CLI_Command {
 			WP_CLI::log( 'Site name field is empty' );
 			return;
 		} else {
-			if ( false === $this->_connect_to_db( 'localhost', 'root', 'AqRcKrLo' ) ) {
+			if ( false === $this->_connect_to_db() ) {
 				return;
 			}
 
@@ -228,7 +402,7 @@ class EE_Command extends WP_CLI_Command {
 
 					$path = getcwd();
 					$path .= '/sites/' . $site_name;
-					var_dump($path);
+
 					if ( ! file_exists( $path ) ) {
 						WP_CLI::error( 'Configuration file not found for: ' . $site_name );
 					}
@@ -243,6 +417,84 @@ class EE_Command extends WP_CLI_Command {
 		$this->conn->close();
 	}
 
+	/**
+	 * Updates the specified website.
+	 *
+	 * Example:
+	 * wp ee site update example.com --wpfc --letsencrypt
+	 *
+	 * @param array $_          Positional argument.
+	 * @param array $assoc_args Associative argument.
+	 *
+	 * @when before_wp_load
+	 */
+	public function update( $_, $assoc_args ) {
+		if ( empty( $_[0] ) ) {
+			WP_CLI::error( 'Site name cannot be empty!' );
+			return;
+		}
+
+		if ( empty( $assoc_args ) ) {
+			WP_CLI::error( 'Update type missing.' );
+			return;
+		}
+
+		$site_name   = $_[0];
+		$site_type_new = array_keys( $assoc_args )[0];
+		$site_type_old = '';
+		$update_site_type = true;
+
+		if ( 'letsencrypt' === array_keys( $assoc_args )[0] ) {
+			$update_site_type = false;
+		}
+
+		if ( false === $this->_connect_to_db() ) {
+			return;
+		}
+
+		$query = "SELECT site_name, site_type_code FROM ee.ee_site_data WHERE site_name LIKE '" . $site_name . "'";
+
+		if ( $result = $this->conn->query( $query ) ) {
+			if ( 0 === $result->num_rows ) {
+				WP_CLI::error( $site_name . ' does not exist!' );
+				return;
+			}
+
+			if ( true === $update_site_type ) {
+				$site_type_old = $result->fetch_assoc()['site_type_code'];
+				$site_type_new_index = array_search( $site_type_new, $this->site_update_argument );
+				$can_update = $this->site_update_constraints[ $site_type_old ][ $site_type_new_index ];
+
+				if ( false === $can_update ) {
+					WP_CLI::error( 'Cannot update ' . $site_name . ' from ' . $site_type_old . ' to ' . $site_type_new . '. See this for more info - https://goo.gl/yKmGTX' );
+					return;
+				}
+
+				$update_string = '';
+				foreach ( $this->site_data[ $site_type_new ] as $key => $value ) {
+					$update_string .= str_replace( '-', '_', $key ) . '="' . $value . '",';
+				}
+				$update_string .= 'site_type_code="' . $site_type_new . '"';
+				if ( count( $assoc_args ) > 1 ) {
+					$update_string .= ',letsencrypt="enabled"';
+				}
+				$query = "UPDATE ee.ee_site_data SET $update_string WHERE site_name LIKE '" . $site_name . "'";
+			} else {
+				$query = "UPDATE ee.ee_site_data SET letsencrypt='enabled' WHERE site_name LIKE '" . $site_name . "'";
+			}
+
+			$this->conn->query( $query );
+			WP_CLI::success( 'Site successfully updated!' );
+		}
+
+		$this->conn->close();
+	}
+
+	/**
+	 * Sets the path for directory which stores configuration files.
+	 *
+	 * @param string $path_link Link to the directory.
+	 */
 	public function _create_directory( $path_link = '' ) {
 		if ( ! empty( $path_link ) ) {
 			$path = $path_link;
@@ -258,6 +510,11 @@ class EE_Command extends WP_CLI_Command {
 		}
 	}
 
+	/**
+	 * Checks if a given directory is writable.
+	 *
+	 * @param string $file_or_directory Path to a directory or file.
+	 */
 	public function _is_writable( $file_or_directory ) {
 		if ( ! is_writable( $file_or_directory ) ) {
 			return false;
@@ -266,6 +523,12 @@ class EE_Command extends WP_CLI_Command {
 		}
 	}
 
+	/**
+	 * Creates configuration file and writes to it.
+	 *
+	 * @param string $path     Path to a directory.
+	 * @param string $file_name File name.
+	 */
 	public function _write_to_file( $path, $file_name ) {
 		// Check if directory has write permissions.
 		if ( ! file_exists( $path ) ) {
@@ -275,12 +538,12 @@ class EE_Command extends WP_CLI_Command {
 		// Open the file in write mode.
 		$file = fopen( $path . $file_name , 'w+' );
 
-		if ( false === $this->_connect_to_db( 'localhost', 'root', 'AqRcKrLo' ) ) {
+		if ( false === $this->_connect_to_db() ) {
 			return;
 		}
 
 		$query = "
-					SELECT site_type, cache_type, php_version, letsencrypt, mysql
+					SELECT site_type, cache_type, php, letsencrypt, mysql
 					FROM ee.ee_site_data
 					WHERE site_name
 					LIKE '" . $this->site_name . "'
@@ -297,14 +560,25 @@ class EE_Command extends WP_CLI_Command {
 		fclose( $file );
 	}
 
-	public function _insert_to_db( $site_name, $site_type, $cache_type, $php_version, $letsencrypt, $mysql ) {
-		if ( false === $this->_connect_to_db( 'localhost', 'root', 'AqRcKrLo' ) ) {
+	/**
+	 * Inserts site data to database when create() is called.
+	 *
+	 * @param string $site_name Name of the site.
+	 * @param string $site_type_code Code of the type of site. Eg `wpfc`, `wpredis`, etc.
+	 * @param string $site_type Type of site. Eg `WordPress`, `PHP`, etc.
+	 * @param string $cache_type Type of cache enabled.
+	 * @param string $php Version of PHP.
+	 * @param string $letsencrypt Enable letsencrypt.
+	 * @param string $mysql Add database.
+	 */
+	public function _insert_to_db( $site_name, $site_type_code, $site_type, $cache_type, $php, $letsencrypt, $mysql ) {
+		if ( false === $this->_connect_to_db() ) {
 			return;
 		}
 
 		$query = "
-					INSERT INTO ee.ee_site_data (ID, site_name, site_type, cache_type, php_version, letsencrypt, mysql)
-					VALUES (NULL, '$site_name', '$site_type', '$cache_type', '$php_version', '$letsencrypt', '$mysql')
+					INSERT INTO ee.ee_site_data (ID, site_name, site_type_code, site_type, cache_type, php, letsencrypt, mysql)
+					VALUES (NULL, '$site_name', '$site_type_code', '$site_type', '$cache_type', '$php', '$letsencrypt', '$mysql')
 				";
 
 		if ( true === $this->conn->query( $query ) ) {
@@ -321,8 +595,11 @@ class EE_Command extends WP_CLI_Command {
 		$this->conn->close();
 	}
 
-	public function _connect_to_db( $server_name, $username, $password ) {
-		$this->conn = new mysqli( $server_name, $username, $password );
+	/**
+	 * Connects to database
+	 */
+	public function _connect_to_db() {
+		$this->conn = new mysqli( $this->server_name, $this->username, $this->password );
 
 		if ( $this->conn->connect_error ) {
 			WP_CLI::error( 'Connection failed: ' . $this->conn->connect_error );
