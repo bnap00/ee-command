@@ -9,5 +9,8 @@
             "email": "siddharth.thevaril@gmail.com"
         }
     ],
-    "require": {}
+    "require": {},
+    "autoload": {
+        "files": ["ee-loader.php"]
+    }
 }
