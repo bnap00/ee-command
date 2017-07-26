@@ -1,0 +1,13 @@
+{
+    "name": "siddharth-thevaril/ee-command",
+    "description": "Commands for EE Engine using WP-CLI",
+    "type": "wp-cli-package",
+    "license": "GPL",
+    "authors": [
+        {
+            "name": "Sidsector9",
+            "email": "siddharth.thevaril@gmail.com"
+        }
+    ],
+    "require": {}
+}
