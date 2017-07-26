@@ -1,5 +1,5 @@
 {
-    "name": "siddharth-thevaril/ee-command",
+    "name": "sidsector9/ee-command",
     "description": "Commands for EE Engine using WP-CLI",
     "type": "wp-cli-package",
     "license": "GPL",
