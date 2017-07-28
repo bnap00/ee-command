@@ -1,14 +1,21 @@
-version: "3"
-build:
-  context: ./DockerData/
-  image: eewp
-  args:
-    buildno: 1
+version: "3.0"
 
 services:
   database:
     container_name: database
     image: mariadb
+    ports:
+      - 3306:3306
+    volumes: 
+      - ./DockerData/mysql:/var/lib/mysql
+      - ./DockerData/ee.sql:/docker-entrypoint-initdb.d/init-ee.sql
+    env_file:
+      - ./DockerData/db.env
+  
+  database:
+    container_name: eewp
+    image: eewp
+    build: ./DockerData/
     ports:
       - 3306:3306
     volumes: 
