@@ -66,27 +66,6 @@ class EE_Command extends WP_CLI_Command {
 	public $mysql              = '';
 
 	/**
-	 * Server Name.
-	 *
-	 * @var string
-	 */
-	public $server_name        = $_ENV[ 'MYSQL_HOST' ];
-
-	/**
-	 * SQL Username.
-	 *
-	 * @var string
-	 */
-	public $username           = $_ENV[ 'MYSQL_USER' ];
-
-	/**
-	 * SQL Password.
-	 *
-	 * @var string
-	 */
-	public $password           = $_ENV[ 'MYSQL_PASSWORD' ];
-
-	/**
 	 * Databse connection object.
 	 *
 	 * @var object
@@ -603,7 +582,7 @@ class EE_Command extends WP_CLI_Command {
 	 * Connects to database
 	 */
 	public function _connect_to_db() {
-		$this->conn = new mysqli( $this->server_name, $this->username, $this->password );
+		$this->conn = new mysqli( $_ENV[ 'MYSQL_HOST' ], $_ENV[ 'MYSQL_USER' ], $_ENV[ 'MYSQL_PASSWORD' ] );
 
 		if ( $this->conn->connect_error ) {
 			WP_CLI::error( 'Connection failed: ' . $this->conn->connect_error );
