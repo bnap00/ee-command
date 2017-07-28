@@ -4,20 +4,16 @@ services:
   database:
     container_name: database
     image: mariadb
-    ports:
-      - 3306:3306
     volumes: 
       - ./DockerData/mysql:/var/lib/mysql
       - ./DockerData/ee.sql:/docker-entrypoint-initdb.d/init-ee.sql
     env_file:
       - ./DockerData/db.env
   
-  database:
+  eewp:
     container_name: eewp
     image: eewp
     build: ./DockerData/
-    ports:
-      - 3306:3306
     volumes: 
       - ./DockerData/mysql:/var/lib/mysql
       - ./DockerData/ee.sql:/docker-entrypoint-initdb.d/init-ee.sql
