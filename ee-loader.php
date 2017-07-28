@@ -70,21 +70,21 @@ class EE_Command extends WP_CLI_Command {
 	 *
 	 * @var string
 	 */
-	public $server_name        = 'localhost';
+	public $server_name        = $_ENV[ 'MYSQL_HOST' ];
 
 	/**
 	 * SQL Username.
 	 *
 	 * @var string
 	 */
-	public $username           = 'root';
+	public $username           = $_ENV[ 'MYSQL_USER' ];
 
 	/**
 	 * SQL Password.
 	 *
 	 * @var string
 	 */
-	public $password           = 'AqRcKrLo';
+	public $password           = $_ENV[ 'MYSQL_PASSWORD' ];
 
 	/**
 	 * Databse connection object.
