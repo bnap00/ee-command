@@ -4,18 +4,16 @@ services:
   database:
     container_name: database
     image: mariadb
-    volumes: 
+    volumes:
       - ./DockerData/mysql:/var/lib/mysql
       - ./DockerData/ee.sql:/docker-entrypoint-initdb.d/init-ee.sql
     env_file:
       - ./DockerData/db.env
-  
-  eewp:
-    container_name: eewp
-    image: eewp
-    build: ./DockerData/
-    volumes: 
-      - ./DockerData/mysql:/var/lib/mysql
-      - ./DockerData/ee.sql:/docker-entrypoint-initdb.d/init-ee.sql
+
+  wordpress:
+    container_name: wordpress
+    image: rtcamp/php
     env_file:
       - ./DockerData/db.env
+    links:
+      - database:mysql
